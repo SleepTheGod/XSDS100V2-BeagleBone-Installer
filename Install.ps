@@ -1,0 +1,60 @@
+# Ensure the script runs as Administrator
+if (-not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
+    Write-Host "Please run this script as Administrator." -ForegroundColor Red
+    exit
+}
+
+# Define URLs
+$beagleBoneDriverUrl = "https://beagleboard.org/static/Drivers/Windows/Bone_D64.exe"
+$tiDriverPackageUrl = "https://software-dl.ti.com/ccs/esd/cloud/driver_pkg/Windows/driver_package_1.0.0.exe"
+$ccsInstallerUrl = "https://software-dl.ti.com/ccs/esd/CCS7/CCS_7.1.0.00016_win64.zip"
+
+# Define paths
+$downloadFolder = "$env:TEMP\BeagleBone_XSDS_Install"
+$beagleBoneDriverInstaller = "$downloadFolder\Bone_D64.exe"
+$tiDriverInstaller = "$downloadFolder\driver_package_1.0.0.exe"
+$ccsInstallerZip = "$downloadFolder\CCS_Installer.zip"
+$ccsInstallerFolder = "$downloadFolder\CCS_Installer"
+
+# Create download folder if not exists
+if (-not (Test-Path $downloadFolder)) {
+    New-Item -Path $downloadFolder -ItemType Directory
+}
+
+# Function to download a file
+function Download-File($url, $output) {
+    Write-Host "Downloading $url to $output..."
+    Invoke-WebRequest -Uri $url -OutFile $output
+}
+
+# Download BeagleBone driver
+Download-File $beagleBoneDriverUrl $beagleBoneDriverInstaller
+
+# Download TI driver package for XSDS100V2
+Download-File $tiDriverPackageUrl $tiDriverInstaller
+
+# Download CCS Installer
+Download-File $ccsInstallerUrl $ccsInstallerZip
+
+# Extract CCS installer
+Write-Host "Extracting Code Composer Studio Installer..."
+Expand-Archive -Path $ccsInstallerZip -DestinationPath $ccsInstallerFolder -Force
+
+# Silent installation of BeagleBone driver
+Write-Host "Installing BeagleBone driver..."
+Start-Process -FilePath $beagleBoneDriverInstaller -ArgumentList "/S" -Wait
+
+# Silent installation of TI XSDS100V2 driver package
+Write-Host "Installing TI XSDS100V2 driver..."
+Start-Process -FilePath $tiDriverInstaller -ArgumentList "/S" -Wait
+
+# Install Code Composer Studio silently
+$ccsInstallerExecutable = "$ccsInstallerFolder\CCS_7.1.0.00016_win64.exe"
+Write-Host "Installing Code Composer Studio..."
+Start-Process -FilePath $ccsInstallerExecutable -ArgumentList "/S" -Wait
+
+# Clean up
+Write-Host "Cleaning up installation files..."
+Remove-Item -Recurse -Force $downloadFolder
+
+Write-Host "BeagleBone and XSDS100V2 drivers installed, and Code Composer Studio configured successfully!" -ForegroundColor Green
